@@ -17,6 +17,7 @@ export interface ModalProps extends DOMProps, LayerExtendableProps, QAProps {
     disableBodyScrollLock?: boolean;
     // disableFocusTrap?: boolean;
     children?: React.ReactNode;
+    container?: HTMLElement;
 }
 
 export type ModalCloseReason = LayerCloseReason;
@@ -37,6 +38,7 @@ export function Modal({
     children,
     style,
     className,
+    container,
     qa,
 }: ModalProps) {
     const contentRef = React.useRef<HTMLDivElement>(null);
@@ -81,7 +83,7 @@ export function Modal({
     }
 
     return (
-        <Portal>
+        <Portal container={container}>
             <div
                 data-inited={hasBeenOpen.current ? '' : undefined}
                 onAnimationEnd={handleAnimationEnd}

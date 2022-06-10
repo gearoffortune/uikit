@@ -1,49 +1,28 @@
 import React from 'react';
 import {block} from '../../utils/cn';
-import {Icon} from '../../Icon';
+import {Icon, IconProps} from '../../Icon';
 import {Button} from '../../Button';
 import {Link} from '../../Link';
-import {CrossIcon} from '../../icons/CrossIcon';
-import {AttentionToast} from '../../icons/AttentionToast';
-import {SuccessToast} from '../../icons/SuccessToast';
+import {Alarm, CrossIcon, Info, Success} from '../../icons';
+import type {ToastType, ToastAction, ToastProps} from '../types';
 
 import './Toast.scss';
 
 const b = block('toast');
-
 const FADE_IN_LAST_ANIMATION_NAME = 'move-left';
 const FADE_OUT_LAST_ANIMATION_NAME = 'remove-height';
-
 const DEFAULT_TIMEOUT = 5000;
-
-const TITLE_ICONS = {
-    error: AttentionToast,
-    success: SuccessToast,
+const CROSS_ICON_SIZE = 12;
+const TITLE_ICONS: Record<ToastType, IconProps['data']> = {
+    info: Info,
+    success: Success,
+    warning: Alarm,
+    error: Alarm,
 };
-
-export interface ToastAction {
-    label: string;
-    onClick: VoidFunction;
-    removeAfterClick?: boolean;
-}
-
-export type ToastType = 'error' | 'success';
-
-export interface ToastProps {
-    name: string;
-    title?: string;
-    className?: string;
-    timeout?: number;
-    allowAutoHiding?: boolean;
-    content?: React.ReactNode;
-    type?: ToastType;
-    isClosable?: boolean;
-    isOverride?: boolean;
-    actions?: ToastAction[];
-}
 
 interface ToastInnerProps {
     removeCallback: VoidFunction;
+    mobile?: boolean;
 }
 
 interface ToastUnitedProps extends ToastProps, ToastInnerProps {}
@@ -183,20 +162,28 @@ function renderActions({actions, onClose}: RenderActionsProps) {
         return null;
     }
 
-    return actions.map(({label, onClick, removeAfterClick = true}, index) => {
-        const onActionClick = () => {
-            onClick();
-            if (removeAfterClick) {
-                onClose();
-            }
-        };
+    return (
+        <div className={b('actions')}>
+            {actions.map(({label, onClick, removeAfterClick = true}, index) => {
+                const onActionClick = () => {
+                    onClick();
+                    if (removeAfterClick) {
+                        onClose();
+                    }
+                };
 
-        return (
-            <Link key={`${label}__${index}`} className={b('action')} onClick={onActionClick}>
-                {label}
-            </Link>
-        );
-    });
+                return (
+                    <Link
+                        key={`${label}__${index}`}
+                        className={b('action')}
+                        onClick={onActionClick}
+                    >
+                        {label}
+                    </Link>
+                );
+            })}
+        </div>
+    );
 }
 
 interface RenderIconProps {
@@ -204,17 +191,25 @@ interface RenderIconProps {
 }
 
 function renderIcon({type}: RenderIconProps) {
-    const icon = type ? TITLE_ICONS[type] : null;
-
-    if (!icon) {
+    if (!type) {
         return null;
     }
 
-    return <Icon data={icon} className={b('icon', {title: true})} />;
+    return <Icon data={TITLE_ICONS[type]} className={b('icon', {[type]: true})} />;
 }
 
 export function Toast(props: ToastUnitedProps) {
-    const {allowAutoHiding = true, isClosable = true, isOverride = false} = props;
+    const {
+        content,
+        actions,
+        title,
+        className,
+        type,
+        allowAutoHiding = true,
+        isClosable = true,
+        isOverride = false,
+        mobile = false,
+    } = props;
 
     const {
         status,
@@ -228,13 +223,14 @@ export function Toast(props: ToastUnitedProps) {
     const closeOnTimeoutProps = useCloseOnTimeout({onClose: handleClose, timeout});
 
     const mods = {
+        mobile,
         appearing: status === ToastStatus.ShowingIndents || status === ToastStatus.ShowingHeight,
         'show-animation': status === ToastStatus.ShowingHeight,
         'hide-animation': status === ToastStatus.Hiding,
         created: status !== ToastStatus.Creating,
+        [type || 'default']: true,
     };
 
-    const {content, actions, title, className, type} = props;
     return (
         <div
             className={b(mods, className)}
@@ -242,22 +238,17 @@ export function Toast(props: ToastUnitedProps) {
             {...heightProps}
             {...closeOnTimeoutProps}
         >
-            <div className={b('title', {bold: Boolean(content || actions)})}>
+            <div className={b('container')}>
                 {renderIcon({type})}
-                {title}
+                <div className={b('title')}>{title}</div>
+                {isClosable && (
+                    <Button view="flat-secondary" className={b('btn-close')} onClick={handleClose}>
+                        <Icon data={CrossIcon} size={CROSS_ICON_SIZE} />
+                    </Button>
+                )}
+                {Boolean(content) && <div className={b('content')}>{content}</div>}
+                {renderActions({actions, onClose: handleClose})}
             </div>
-            {isClosable && (
-                <Button
-                    view="flat-secondary"
-                    size="s"
-                    style={{position: 'absolute', top: 10, right: 10}}
-                    onClick={handleClose}
-                >
-                    <Icon data={CrossIcon} />
-                </Button>
-            )}
-            {content}
-            {renderActions({actions, onClose: handleClose})}
         </div>
     );
 }
